@@ -1,0 +1,80 @@
+﻿@page "/Customer"
+@using Mc2.Application.Common.Dto;
+
+
+<button class="btn btn-primary mb-2" @onclick="AddCustomerButtonClick">Add new customer</button>
+<table class="table">
+    <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Date Of Birth</th>
+            <th>Phone Number</th>
+            <th>Email</th>
+            <th>Bank Account Number</th>
+            <th>Commands</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var customer in customers)
+        {
+            <tr>
+                <td>@customer.FirstName</td>
+                <td>@customer.LastName</td>
+                <td>@customer.DateOfBirth</td>
+                <td>@customer.PhoneNumber</td>
+                <td>@customer.Email</td>
+                <td>@customer.BankAccountNumber</td>
+                <td>
+                    <button class="btn btn-primary" @onclick="()=>EditCustomerButtonClick(customer.Id)">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger" @onclick="()=>DeleteCustomerButtonClick(customer.Id)">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@code {
+    public List<ResultGetCustomerDto> customers = new List<ResultGetCustomerDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await _http.GetAsync("customer/GetAll");
+        if (response.IsSuccessStatusCode)
+        {
+            using (var reponseStream = await response.Content.ReadAsStreamAsync())
+            {
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                customers = await JsonSerializer.DeserializeAsync<List<ResultGetCustomerDto>>(reponseStream, options);
+            }
+        }
+    }
+
+    private void AddCustomerButtonClick()
+    {
+        _navigationManager.NavigateTo("AddEditCustomer");
+    }
+
+    private void EditCustomerButtonClick(int id)
+    {
+        _navigationManager.NavigateTo("AddEditCustomer/" + id);
+    }
+
+    private async Task DeleteCustomerButtonClick(int id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            var response = await _http.DeleteAsync("customers/Delete/" + id);
+            if (response.IsSuccessStatusCode) // 200
+                await OnInitializedAsync();
+            else
+                await JsRuntime.InvokeVoidAsync("alert", response.Content.ReadAsStringAsync().Result);
+        }
+    }
+}
